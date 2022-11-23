@@ -67,10 +67,34 @@ int main(int argc, char **argv)
 
   t_particles particles_cpu;
 
+  // Vypocet size s padding tak, aby v kernelech nemusela byt podminka, zda vlakno jeste nevypadlo z rozsahu
+  int size = 0;
+  int totalThreads = simulationGrid * thr_blc;
+  if( N == totalThreads )
+  {
+    size = N;
+  }
+  else if( N < totalThreads )
+  {
+    size = totalThreads
+  }
+  else
+  {
+    if(N % totalThreads == 0)
+    {
+      size = N;
+    }
+    else
+    {
+      size = ( (N / totalThreads ) + 1 ) * totalThreads;
+    }
+  }
+
   //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
   //                            FILL IN: CPU side memory allocation (step 0)                                          //
   //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
+  particles_cpu.data = (float *)aligned_alloc(ALIGMENT, size * PARTICLES_DATA * sizeof(float));
+  memset(particles_cpu.data, 0, size * PARTICLES_DATA * sizeof(float));
 
   //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
   //                              FILL IN: memory layout descriptor (step 0)                                          //
@@ -83,13 +107,13 @@ int main(int argc, char **argv)
    *                      in floats, not bytes        not bytes
   */
   MemDesc md(
-        nullptr,                0,                          0,              // Postition in X
-        nullptr,                0,                          0,              // Postition in Y
-        nullptr,                0,                          0,              // Postition in Z
-        nullptr,                0,                          0,              // Velocity in X
-        nullptr,                0,                          0,              // Velocity in Y
-        nullptr,                0,                          0,              // Velocity in Z
-        nullptr,                0,                          0,              // Weight
+        particles_cpu.data,                1,           size * 0,              // Postition in X
+        particles_cpu.data,                1,           size * 1,              // Postition in Y
+        particles_cpu.data,                1,           size * 2,              // Postition in Z
+        particles_cpu.data,                1,           size * 3,              // Velocity in X
+        particles_cpu.data,                1,           size * 4,              // Velocity in Y
+        particles_cpu.data,                1,           size * 5,              // Velocity in Z
+        particles_cpu.data,                1,           size * 6,              // Weight
         N,                                                                  // Number of particles
         recordsNum);                                                        // Number of records in output file
 
@@ -108,18 +132,20 @@ int main(int argc, char **argv)
   }
 
 
-  t_particles particles_gpu;
+  t_particles  particles_gpu;
+  t_velocities tmp_velocities_gpu;
 
   //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
   //                                  FILL IN: GPU side memory allocation (step 0)                                    //
   //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-
+  cudaMalloc<float>(&(particles_gpu.data) , size * PARTICLES_DATA  * sizeof(float));
+  cudaMalloc<float>(&(tmp_velocities_gpu.data), size * VELOCITIES_DATA * sizeof(float));
 
   //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
   //                                       FILL IN: memory transfers (step 0)                                         //
   //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
+  cudaMemcpy(particles_gpu.data, particles_cpu.data, size * PARTICLES_DATA * sizeof(float), cudaMemcpyHostToDevice);
+  cudaMemset(tmp_velocities_gpu.data, 0, size * VELOCITIES_DATA * sizeof(float));
 
   gettimeofday(&t1, 0);
 
@@ -128,7 +154,9 @@ int main(int argc, char **argv)
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
     //                                       FILL IN: kernels invocation (step 0)                                     //
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
+    calculate_gravitation_velocity<<<simulationGrid, thr_blc>>>(particles_gpu, tmp_velocities_gpu, N, dt);
+    calculate_collision_velocity<<<simulationGrid, thr_blc>>>(particles_gpu, tmp_velocities_gpu, N, dt);
+    update_particle<<<simulationGrid, thr_blc>>>(particles_gpu, tmp_velocities_gpu, N, dt);
 
 
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

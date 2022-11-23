@@ -19,6 +19,13 @@
 constexpr float G =  6.67384e-11f;
 constexpr float COLLISION_DISTANCE = 0.01f;
 
+constexpr float ALIGMENT = 64;
+constexpr float PARTICLES_DATA = 7;
+constexpr float VELOCITIES_DATA = 3;
+constexpr float VELOCITIES_X = 0;
+constexpr float VELOCITIES_Y = 1;
+constexpr float VELOCITIES_Z = 2;
+
 
 /**
  * Particles data structure
@@ -28,13 +35,7 @@ typedef struct
   //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 	//                 FILL IN: Particle data structure optimal for the use on GPU (step 0)                             //
   //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-  float* pos_x;
-  float* pos_y;
-  float* pos_z;
-  float* vel_x;
-  float* vel_y;
-  float* vel_z;
-  float* weight;
+  float* data;
 } t_particles;
 
 /**
@@ -45,9 +46,7 @@ typedef struct
   //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 	//                 FILL IN: Velocities data structure optimal for the use on GPU (step 0)                           //
   //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-  float* x;
-  float* y;
-  float* z;
+  float* data;
 } t_velocities;
 
 
