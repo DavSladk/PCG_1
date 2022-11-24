@@ -36,11 +36,27 @@ začne cache globální paměti vybíjet.
 
 Krok 1: optimalizace kódu
 =====================
-Došlo ke zrychlení?
+DVelikost dat    	čas jedne iterace [s]
+    25600                0.014040
+    28160                0.015326
+    30720                0.016724
+    33280                0.018110
+    35840                0.019499
+    38400                0.020897
+    40960                0.022288
+    43520                0.023682
+    46080                0.025083
+    48640                0.026470
+    51200                0.027860
+    53760                0.029255
+    56320                0.053532
+    58880                0.055970
+    61440                0.058579
+    64000                0.061190
 
-Popište hlavní důvody:
-
-
+Ke zrychlení došlo. Důvod je menší počet volání kernelů
+a to, že každé vlákno počítá všechno potřebné zaráz oproti tomu
+aby se přes částice procházelo dvakrát.
 
 Krok 2: sdílená paměť
 =====================

@@ -11,6 +11,7 @@
 #include <sys/time.h>
 #include <cstdio>
 #include <cmath>
+#include <utility>
 
 #include "nbody.h"
 #include "h5Helper.h"
@@ -199,6 +200,7 @@ int main(int argc, char **argv)
     //                                       FILL IN: kernels invocation (step 0)                                     //
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
     calculate_velocity<<<simulationGrid, thr_blc>>>(particles_one_gpu, particles_two_gpu, N, dt);
+    std::swap(particles_one_gpu, particles_two_gpu);
 
 
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
