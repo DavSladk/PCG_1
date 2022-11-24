@@ -26,12 +26,14 @@ Velikost dat    	čas jedne iterace [s]
 
 Pro počet částic 25600 až 53760 dochází k nepřekvapujícímu
 inkrementálnímu nárustu času pro výpočet jedné iterace z prostého
-důvodu zvětšení množství interakci pro kouždou částici.
+důvodu zvětšení množství interakci pro každou částici.
 
 Pro 56320 částit však náhle čas výpočtu náhle výrazně skočí téměř
-o dvojnásob. Je to způsobeno tím, že každé vlákno postupně šahá
-na data všech ostatních vláken a při určité množství dat se
-začne cache globální paměti vybíjet.
+o dvojnásob. Je to způsobeno tím, že na Karolině jsou karty
+nvidia A100, které mají 108 SM. Při 56320 vláknech začne
+program vytvářet více jak 108 bloků, tedy rezidentních bloků
+je více než je možné naráz obsloužit a některé bloky musejí čekat
+na uvolnění SM.
 
 
 Krok 1: optimalizace kódu
@@ -60,12 +62,28 @@ aby se přes částice procházelo dvakrát.
 
 Krok 2: sdílená paměť
 =====================
-Došlo ke zrychlení?
+DVelikost dat    	čas jedne iterace [s]
+    25600                0.011253
+    28160                0.012277
+    30720                0.013392
+    33280                0.014516
+    35840                0.015632
+    38400                0.016738
+    40960                0.017852
+    43520                0.018967
+    46080                0.020081
+    48640                0.021197
+    51200                0.022311
+    53760                0.023425
+    56320                0.046335
+    58880                0.048503
+    61440                0.050626
+    64000                0.052701
 
-Zdůvodněte:
-
-
-
+Ke zrychlení došlo. Důvodem je, že každé vlákno pořád
+nepřistupuje do globální paměti. Místo toho každé vlákno
+načte kus globální paměti do sdílené a pak každé vlákno
+nahradí přístup do globáln paměti přístupem do sdílené.
 
 Krok 5: analýza výkonu
 ======================

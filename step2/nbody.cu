@@ -138,8 +138,9 @@ __global__ void update_particle(t_particles p, t_velocities tmp_vel, int N, floa
  * @param N       - Number of particles
  * @param dt      - Size of the time step
  */
-__global__ void calculate_velocity(t_particles p_in, t_particles p_out, int N, float dt)
+__global__ void calculate_velocity(t_particles p_in, t_particles p_out, int N, float dt, int sharedParticles)
 {
+  extern __shared__ float shared[];
   float r, dx, dy, dz;
   float vx, vy, vz;
   float r3, G_dt_r3, Fg_dt_m2_r;
@@ -149,47 +150,75 @@ __global__ void calculate_velocity(t_particles p_in, t_particles p_out, int N, f
   float tmp_z = 0;
 
   float isComputable = 0;
-
   int index = blockDim.x * blockIdx.x + threadIdx.x;
 
-  for(int i = 0; i < N; i++)
+  float vel_x =  p_in.vel_x[index];
+  float vel_y =  p_in.vel_y[index];
+  float vel_z =  p_in.vel_z[index];
+  float pos_x =  p_in.pos_x[index];
+  float pos_y =  p_in.pos_y[index];
+  float pos_z =  p_in.pos_z[index];
+  float weight = p_in.weight[index];
+
+  // Go over all particles in chunks that gonna fit into shared memory
+  for(int i = 0; i < N / sharedParticles; i++)
   {
-    // GRAVITY
+    // Load into shared memory
+    for(int s = 0; s < sharedParticles / blockDim.x; s++)
+    {
+      // load only if thread can fit into shared memory
+      if( blockDim.x*s + threadIdx.x < sharedParticles)
+      {
+        shared[blockDim.x*s + threadIdx.x + POS_X  * sharedParticles] = p_in.pos_x [i*sharedParticles + s*blockDim.x + threadIdx.x];
+        shared[blockDim.x*s + threadIdx.x + POS_Y  * sharedParticles] = p_in.pos_y [i*sharedParticles + s*blockDim.x + threadIdx.x];
+        shared[blockDim.x*s + threadIdx.x + POS_Z  * sharedParticles] = p_in.pos_z [i*sharedParticles + s*blockDim.x + threadIdx.x];
+        shared[blockDim.x*s + threadIdx.x + VEL_X  * sharedParticles] = p_in.pos_x [i*sharedParticles + s*blockDim.x + threadIdx.x];
+        shared[blockDim.x*s + threadIdx.x + VEL_Y  * sharedParticles] = p_in.pos_y [i*sharedParticles + s*blockDim.x + threadIdx.x];
+        shared[blockDim.x*s + threadIdx.x + VEL_X  * sharedParticles] = p_in.pos_z [i*sharedParticles + s*blockDim.x + threadIdx.x];
+        shared[blockDim.x*s + threadIdx.x + WEIGHT * sharedParticles] = p_in.weight[i*sharedParticles + s*blockDim.x + threadIdx.x];
+      }
+    }
+    // Wait untill all threads finished loading
+    __syncthreads();
+    
+    // Go over all shared memory and calculate
 
+    for(int s = 0; s < sharedParticles; s++)
+    {
+      // GRAVITY 
+      dx = pos_x - shared[s + POS_X * sharedParticles];
+      dy = pos_y - shared[s + POS_Y * sharedParticles];
+      dz = pos_z - shared[s + POS_Z * sharedParticles];
 
-    dx = p_in.pos_x[index] - p_in.pos_x[i];
-    dy = p_in.pos_y[index] - p_in.pos_y[i];
-    dz = p_in.pos_z[index] - p_in.pos_z[i];
+      r = sqrt(dx*dx + dy*dy + dz*dz);
 
-    r = sqrt(dx*dx + dy*dy + dz*dz);
+      // TO DO
+      isComputable = (blockDim.x * blockIdx.x + threadIdx.x != i*sharedParticles + s*blockDim.x + threadIdx.x) && (r > COLLISION_DISTANCE);
 
-    // (index != i) <- make sure, you are not computing effects of particle on itself
-    // (r > COLLISION_DISTANCE) <- because it was in the cpu implementation
-    isComputable = (index != i) && (r > COLLISION_DISTANCE);
+      r3 = r * r * r + FLT_MIN;
+      G_dt_r3 = -G * dt / r3;
+      Fg_dt_m2_r = G_dt_r3 * weight;
 
-    r3 = r * r * r + FLT_MIN;
-    G_dt_r3 = -G * dt / r3;
-    Fg_dt_m2_r = G_dt_r3 * p_in.weight[i];
+      vx = Fg_dt_m2_r * dx;
+      vy = Fg_dt_m2_r * dy;
+      vz = Fg_dt_m2_r * dz;
 
-    vx = Fg_dt_m2_r * dx;
-    vy = Fg_dt_m2_r * dy;
-    vz = Fg_dt_m2_r * dz;
+      tmp_x += vx * isComputable;
+      tmp_y += vy * isComputable;
+      tmp_z += vz * isComputable;
 
-    tmp_x += vx * isComputable;
-    tmp_y += vy * isComputable;
-    tmp_z += vz * isComputable;
+      // COLLISION
+      // TO DO
+      isComputable = (blockDim.x * blockIdx.x + threadIdx.x != i*sharedParticles + s*blockDim.x + threadIdx.x) && (r < COLLISION_DISTANCE) && (r > 0.0f);
 
-    // COLLISION
+      vx = ((weight * vel_x - shared[s + WEIGHT * sharedParticles] * vel_x + 2 * shared[s + WEIGHT * sharedParticles] * shared[s + VEL_X * sharedParticles]) / (weight + shared[s + WEIGHT * sharedParticles])) - vel_x;
+      vy = ((weight * vel_y - shared[s + WEIGHT * sharedParticles] * vel_y + 2 * shared[s + WEIGHT * sharedParticles] * shared[s + VEL_Y * sharedParticles]) / (weight + shared[s + WEIGHT * sharedParticles])) - vel_y;
+      vz = ((weight * vel_z - shared[s + WEIGHT * sharedParticles] * vel_z + 2 * shared[s + WEIGHT * sharedParticles] * shared[s + VEL_Z * sharedParticles]) / (weight + shared[s + WEIGHT * sharedParticles])) - vel_z;
 
-    isComputable = (index != i) && (r < COLLISION_DISTANCE) && (r > 0.0f);
-
-    vx = ((p_in.weight[index] * p_in.vel_x[index] - p_in.weight[i] * p_in.vel_x[index] + 2 * p_in.weight[i] * p_in.vel_x[i]) / (p_in.weight[index] + p_in.weight[i])) - p_in.vel_x[index];
-    vy = ((p_in.weight[index] * p_in.vel_y[index] - p_in.weight[i] * p_in.vel_y[index] + 2 * p_in.weight[i] * p_in.vel_y[i]) / (p_in.weight[index] + p_in.weight[i])) - p_in.vel_y[index];
-    vz = ((p_in.weight[index] * p_in.vel_z[index] - p_in.weight[i] * p_in.vel_z[index] + 2 * p_in.weight[i] * p_in.vel_z[i]) / (p_in.weight[index] + p_in.weight[i])) - p_in.vel_z[index];
-
-    tmp_x += vx * isComputable;
-    tmp_y += vy * isComputable;
-    tmp_z += vz * isComputable;
+      tmp_x += vx * isComputable;
+      tmp_y += vy * isComputable;
+      tmp_z += vz * isComputable;
+    }
   }
 
   p_out.vel_x[index] += tmp_x;

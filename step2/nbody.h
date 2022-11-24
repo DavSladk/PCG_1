@@ -21,6 +21,14 @@ constexpr float COLLISION_DISTANCE = 0.01f;
 
 constexpr float ALIGMENT = 64;
 
+constexpr int POS_X =  0;
+constexpr int POS_Y =  1;
+constexpr int POS_Z =  2;
+constexpr int VEL_X =  3;
+constexpr int VEL_Y =  4;
+constexpr int VEL_Z =  5;
+constexpr int WEIGHT = 6;
+
 /**
  * Particles data structure
  */
@@ -100,7 +108,8 @@ __global__ void update_particle(t_particles  p,
 __global__ void calculate_velocity(t_particles   p_in,
                                    t_particles   p_out,
                                    int           N,
-                                   float         dt);
+                                   float         dt,
+                                   int sharedParticle);
 
 /**
  * CUDA kernel to update particles

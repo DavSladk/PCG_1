@@ -194,12 +194,15 @@ int main(int argc, char **argv)
 
   gettimeofday(&t1, 0);
 
+  int sharedParticles = thr_blc;
+  int sharedMemSize = 7 * sharedParticles * sizeof(float);
+
   for(int s = 0; s < steps; s++)
   {
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
     //                                       FILL IN: kernels invocation (step 0)                                     //
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-    calculate_velocity<<<simulationGrid, thr_blc>>>(particles_one_gpu, particles_two_gpu, N, dt);
+    calculate_velocity<<<simulationGrid, thr_blc, sharedMemSize>>>(particles_one_gpu, particles_two_gpu, N, dt, sharedParticles);
     std::swap(particles_one_gpu, particles_two_gpu);
 
 
