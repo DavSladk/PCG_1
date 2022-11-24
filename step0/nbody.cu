@@ -35,15 +35,15 @@ __global__ void calculate_gravitation_velocity(t_particles p, t_velocities tmp_v
 
   for(int i = 0; i < N; i++)
   {
-    // (index != i) <- make sure, you are not computing effects of particle on itself
-    // (r > COLLISION_DISTANCE) <- because it was in the cpu implementation
-    isComputable = (index != i) && (r > COLLISION_DISTANCE);
 
     dx = p.pos_x[index] - p.pos_x[i];
     dy = p.pos_y[index] - p.pos_y[i];
     dz = p.pos_z[index] - p.pos_z[i];
 
     r = sqrt(dx*dx + dy*dy + dz*dz);
+    // (index != i) <- make sure, you are not computing effects of particle on itself
+    // (r > COLLISION_DISTANCE) <- because it was in the cpu implementation
+    isComputable = (index != i) && (r > COLLISION_DISTANCE);
 
     r3 = r * r * r + FLT_MIN;
     G_dt_r3 = -G * dt / r3;
