@@ -1,2 +1,0 @@
-ml HDF5/1.12.2-iimpi-2022a
-ml CUDA/11.7.0

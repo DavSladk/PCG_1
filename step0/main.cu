@@ -221,6 +221,7 @@ int main(int argc, char **argv)
   // Approximate simulation wall time
   double t = (1000000.0 * (t2.tv_sec - t1.tv_sec) + t2.tv_usec - t1.tv_usec) / 1000000.0;
   printf("Time: %f s\n", t);
+  printf("Time per step: %f s\n", t/steps);
 
 
   //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
