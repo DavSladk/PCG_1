@@ -21,7 +21,46 @@
  */
 __global__ void calculate_gravitation_velocity(t_particles p, t_velocities tmp_vel, int N, float dt)
 {
+  float r, dx, dy, dz;
+  float vx, vy, vz;
+  float r3, G_dt_r3, Fg_dt_m2_r;
 
+  float tmp_x = 0;
+  float tmp_y = 0;
+  float tmp_z = 0;
+
+  float isComputable = 0;
+
+  int index = blockDim.x * blockIdx.x + threadIdx.x;
+
+  for(int i = 0; i < N; i++)
+  {
+    // (index != i) <- make sure, you are not computing effects of particle on itself
+    // (r > COLLISION_DISTANCE) <- because it was in the cpu implementation
+    isComputable = (index != i) && (r > COLLISION_DISTANCE);
+
+    dx = p.pos_x[index] - p.pos_x[i];
+    dy = p.pos_y[index] - p.pos_y[i];
+    dz = p.pos_z[index] - p.pos_z[i];
+
+    r = sqrt(dx*dx + dy*dy + dz*dz);
+
+    r3 = r * r * r + FLT_MIN;
+    G_dt_r3 = -G * dt / r3;
+    Fg_dt_m2_r = G_dt_r3 * p.weight[i];
+
+    vx = Fg_dt_m2_r * dx;
+    vy = Fg_dt_m2_r * dy;
+    vz = Fg_dt_m2_r * dz;
+
+    tmp_x += vx * isComputable;
+    tmp_y += vy * isComputable;
+    tmp_z += vz * isComputable;
+  }
+  
+  tmp_vel.vel_x[index] += tmp_x;
+  tmp_vel.vel_y[index] += tmp_y;
+  tmp_vel.vel_z[index] += tmp_z;
 }// end of calculate_gravitation_velocity
 //----------------------------------------------------------------------------------------------------------------------
 
@@ -34,6 +73,39 @@ __global__ void calculate_gravitation_velocity(t_particles p, t_velocities tmp_v
  */
 __global__ void calculate_collision_velocity(t_particles p, t_velocities tmp_vel, int N, float dt)
 {
+  float r, dx, dy, dz;
+  float vx, vy, vz;
+
+  float tmp_x = 0;
+  float tmp_y = 0;
+  float tmp_z = 0;
+
+  float isComputable = 0;
+
+  int index = blockDim.x * blockIdx.x + threadIdx.x;
+
+  for(int i = 0; i < N; i++)
+  {
+    isComputable = (index != i) && (r < COLLISION_DISTANCE) && (r > 0.0f);
+
+    dx = p.pos_x[index] - p.pos_x[i];
+    dy = p.pos_y[index] - p.pos_y[i];
+    dz = p.pos_z[index] - p.pos_z[i];
+
+    r = sqrt(dx*dx + dy*dy + dz*dz);
+
+    vx = ((p.weight[index] * p.vel_x[index] - p.weight[i] * p.vel_x[index] + 2 * p.weight[i] * p.vel_x[i]) / (p.weight[index] + p.weight[i])) - p.vel_x[index];
+    vy = ((p.weight[index] * p.vel_y[index] - p.weight[i] * p.vel_y[index] + 2 * p.weight[i] * p.vel_y[i]) / (p.weight[index] + p.weight[i])) - p.vel_y[index];
+    vz = ((p.weight[index] * p.vel_z[index] - p.weight[i] * p.vel_z[index] + 2 * p.weight[i] * p.vel_z[i]) / (p.weight[index] + p.weight[i])) - p.vel_z[index];
+
+    tmp_x += vx * isComputable;
+    tmp_y += vy * isComputable;
+    tmp_z += vz * isComputable;
+  }
+
+  tmp_vel.vel_x[index] += tmp_x;
+  tmp_vel.vel_y[index] += tmp_y;
+  tmp_vel.vel_z[index] += tmp_z;
 
 }// end of calculate_collision_velocity
 //----------------------------------------------------------------------------------------------------------------------
@@ -47,7 +119,15 @@ __global__ void calculate_collision_velocity(t_particles p, t_velocities tmp_vel
  */
 __global__ void update_particle(t_particles p, t_velocities tmp_vel, int N, float dt)
 {
+  int index = blockDim.x * blockIdx.x + threadIdx.x;
 
+  p.vel_x[index] += tmp_vel.vel_x[index];
+  p.vel_y[index] += tmp_vel.vel_y[index];
+  p.vel_z[index] += tmp_vel.vel_z[index];
+
+  p.pos_x[index] += p.vel_x[index] * dt;
+  p.pos_y[index] += p.vel_y[index] * dt;
+  p.pos_z[index] += p.vel_z[index] * dt;
 }// end of update_particle
 //----------------------------------------------------------------------------------------------------------------------
 
