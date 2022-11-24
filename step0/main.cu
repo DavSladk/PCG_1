@@ -76,7 +76,7 @@ int main(int argc, char **argv)
   }
   else if( N < totalThreads )
   {
-    size = totalThreads
+    size = totalThreads;
   }
   else
   {

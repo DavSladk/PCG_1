@@ -30,12 +30,12 @@ typedef struct
 	//                 FILL IN: Particle data structure optimal for the use on GPU (step 0)                             //
   //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
   float* pos_x;
-  float* pos_x;
-  float* pos_x;
+  float* pos_y;
+  float* pos_z;
   
   float* vel_x;
-  float* vel_x;
-  float* vel_x;
+  float* vel_y;
+  float* vel_z;
   
   float* weight;
 } t_particles;
