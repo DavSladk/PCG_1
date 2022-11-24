@@ -133,6 +133,77 @@ __global__ void update_particle(t_particles p, t_velocities tmp_vel, int N, floa
 
 /**
  * CUDA kernel to update particles
+ * @param p_in    - particles input
+ * @param p_out   - particles output
+ * @param N       - Number of particles
+ * @param dt      - Size of the time step
+ */
+__global__ void calculate_velocity(t_particles p_in, t_particles p_out, int N, float dt)
+{
+  float r, dx, dy, dz;
+  float vx, vy, vz;
+  float r3, G_dt_r3, Fg_dt_m2_r;
+
+  float tmp_x = 0;
+  float tmp_y = 0;
+  float tmp_z = 0;
+
+  float isComputable = 0;
+
+  int index = blockDim.x * blockIdx.x + threadIdx.x;
+
+  for(int i = 0; i < N; i++)
+  {
+    // GRAVITY
+
+
+    dx = p_in.pos_x[index] - p_in.pos_x[i];
+    dy = p_in.pos_y[index] - p_in.pos_y[i];
+    dz = p_in.pos_z[index] - p_in.pos_z[i];
+
+    r = sqrt(dx*dx + dy*dy + dz*dz);
+    
+    // (index != i) <- make sure, you are not computing effects of particle on itself
+    // (r > COLLISION_DISTANCE) <- because it was in the cpu implementation
+    isComputable = (index != i) && (r > COLLISION_DISTANCE);
+
+    r3 = r * r * r + FLT_MIN;
+    G_dt_r3 = -G * dt / r3;
+    Fg_dt_m2_r = G_dt_r3 * p_in.weight[i];
+
+    vx = Fg_dt_m2_r * dx;
+    vy = Fg_dt_m2_r * dy;
+    vz = Fg_dt_m2_r * dz;
+
+    tmp_x += vx * isComputable;
+    tmp_y += vy * isComputable;
+    tmp_z += vz * isComputable;
+
+    // COLLISION
+
+    isComputable = (index != i) && (r < COLLISION_DISTANCE) && (r > 0.0f);
+
+    vx = ((p.weight[index] * p.vel_x[index] - p.weight[i] * p.vel_x[index] + 2 * p.weight[i] * p.vel_x[i]) / (p.weight[index] + p.weight[i])) - p.vel_x[index];
+    vy = ((p.weight[index] * p.vel_y[index] - p.weight[i] * p.vel_y[index] + 2 * p.weight[i] * p.vel_y[i]) / (p.weight[index] + p.weight[i])) - p.vel_y[index];
+    vz = ((p.weight[index] * p.vel_z[index] - p.weight[i] * p.vel_z[index] + 2 * p.weight[i] * p.vel_z[i]) / (p.weight[index] + p.weight[i])) - p.vel_z[index];
+
+    tmp_x += vx * isComputable;
+    tmp_y += vy * isComputable;
+    tmp_z += vz * isComputable;
+  }
+
+  p_out.vel_x[index] += tmp_x;
+  p_out.vel_y[index] += tmp_y;
+  p_out.vel_z[index] += tmp_z;
+
+  p_out.pos_x[index] += p_out.vel_x[index] * dt;
+  p_out.pos_y[index] += p_out.vel_y[index] * dt;
+  p_out.pos_z[index] += p_out.vel_z[index] * dt;
+
+}
+
+/**
+ * CUDA kernel to update particles
  * @param p       - particles
  * @param comX    - pointer to a center of mass position in X
  * @param comY    - pointer to a center of mass position in Y

@@ -149,38 +149,47 @@ int main(int argc, char **argv)
   }
 
 
-  t_particles  particles_gpu;
-  t_velocities tmp_velocities_gpu;
+  t_particles  particles_one_gpu;
+  t_particles  particles_two_gpu;
 
   //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
   //                                  FILL IN: GPU side memory allocation (step 0)                                    //
   //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-  cudaMalloc<float>(&(particles_gpu.pos_x),      size * sizeof(float));
-  cudaMalloc<float>(&(particles_gpu.pos_y),      size * sizeof(float));
-  cudaMalloc<float>(&(particles_gpu.pos_z),      size * sizeof(float));
-  
-  cudaMalloc<float>(&(particles_gpu.vel_x),      size * sizeof(float));
-  cudaMalloc<float>(&(particles_gpu.vel_y),      size * sizeof(float));
-  cudaMalloc<float>(&(particles_gpu.vel_z),      size * sizeof(float));
-  
-  cudaMalloc<float>(&(particles_gpu.weight),     size * sizeof(float));
-  
-  cudaMalloc<float>(&(tmp_velocities_gpu.vel_x), size * sizeof(float));
-  cudaMalloc<float>(&(tmp_velocities_gpu.vel_y), size * sizeof(float));
-  cudaMalloc<float>(&(tmp_velocities_gpu.vel_z), size * sizeof(float));
+  cudaMalloc<float>(&(particles_one_gpu.pos_x),      size * sizeof(float));
+  cudaMalloc<float>(&(particles_one_gpu.pos_y),      size * sizeof(float));
+  cudaMalloc<float>(&(particles_one_gpu.pos_z),      size * sizeof(float));  
+  cudaMalloc<float>(&(particles_one_gpu.vel_x),      size * sizeof(float));
+  cudaMalloc<float>(&(particles_one_gpu.vel_y),      size * sizeof(float));
+  cudaMalloc<float>(&(particles_one_gpu.vel_z),      size * sizeof(float));  
+  cudaMalloc<float>(&(particles_one_gpu.weight),     size * sizeof(float));
+
+  cudaMalloc<float>(&(particles_two_gpu.pos_x),      size * sizeof(float));
+  cudaMalloc<float>(&(particles_two_gpu.pos_y),      size * sizeof(float));
+  cudaMalloc<float>(&(particles_two_gpu.pos_z),      size * sizeof(float));  
+  cudaMalloc<float>(&(particles_two_gpu.vel_x),      size * sizeof(float));
+  cudaMalloc<float>(&(particles_two_gpu.vel_y),      size * sizeof(float));
+  cudaMalloc<float>(&(particles_two_gpu.vel_z),      size * sizeof(float));  
+  cudaMalloc<float>(&(particles_two_gpu.weight),     size * sizeof(float));
+
 
   //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
   //                                       FILL IN: memory transfers (step 0)                                         //
   //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-  cudaMemcpy(particles_gpu.pos_x,  particles_cpu.pos_x,  size * sizeof(float), cudaMemcpyHostToDevice);
-  cudaMemcpy(particles_gpu.pos_y,  particles_cpu.pos_y,  size * sizeof(float), cudaMemcpyHostToDevice);
-  cudaMemcpy(particles_gpu.pos_z,  particles_cpu.pos_z,  size * sizeof(float), cudaMemcpyHostToDevice);
+  cudaMemcpy(particles_one_gpu.pos_x,  particles_cpu.pos_x,  size * sizeof(float), cudaMemcpyHostToDevice);
+  cudaMemcpy(particles_one_gpu.pos_y,  particles_cpu.pos_y,  size * sizeof(float), cudaMemcpyHostToDevice);
+  cudaMemcpy(particles_one_gpu.pos_z,  particles_cpu.pos_z,  size * sizeof(float), cudaMemcpyHostToDevice);  
+  cudaMemcpy(particles_one_gpu.vel_x,  particles_cpu.vel_x,  size * sizeof(float), cudaMemcpyHostToDevice);
+  cudaMemcpy(particles_one_gpu.vel_y,  particles_cpu.vel_y,  size * sizeof(float), cudaMemcpyHostToDevice);
+  cudaMemcpy(particles_one_gpu.vel_z,  particles_cpu.vel_z,  size * sizeof(float), cudaMemcpyHostToDevice);  
+  cudaMemcpy(particles_one_gpu.weight, particles_cpu.weight, size * sizeof(float), cudaMemcpyHostToDevice);
   
-  cudaMemcpy(particles_gpu.vel_x,  particles_cpu.vel_x,  size * sizeof(float), cudaMemcpyHostToDevice);
-  cudaMemcpy(particles_gpu.vel_y,  particles_cpu.vel_y,  size * sizeof(float), cudaMemcpyHostToDevice);
-  cudaMemcpy(particles_gpu.vel_z,  particles_cpu.vel_z,  size * sizeof(float), cudaMemcpyHostToDevice);
-  
-  cudaMemcpy(particles_gpu.weight, particles_cpu.weight, size * sizeof(float), cudaMemcpyHostToDevice);
+  cudaMemcpy(particles_two_gpu.pos_x,  particles_cpu.pos_x,  size * sizeof(float), cudaMemcpyHostToDevice);
+  cudaMemcpy(particles_two_gpu.pos_y,  particles_cpu.pos_y,  size * sizeof(float), cudaMemcpyHostToDevice);
+  cudaMemcpy(particles_two_gpu.pos_z,  particles_cpu.pos_z,  size * sizeof(float), cudaMemcpyHostToDevice);  
+  cudaMemcpy(particles_two_gpu.vel_x,  particles_cpu.vel_x,  size * sizeof(float), cudaMemcpyHostToDevice);
+  cudaMemcpy(particles_two_gpu.vel_y,  particles_cpu.vel_y,  size * sizeof(float), cudaMemcpyHostToDevice);
+  cudaMemcpy(particles_two_gpu.vel_z,  particles_cpu.vel_z,  size * sizeof(float), cudaMemcpyHostToDevice);  
+  cudaMemcpy(particles_two_gpu.weight, particles_cpu.weight, size * sizeof(float), cudaMemcpyHostToDevice);
 
   gettimeofday(&t1, 0);
 
@@ -189,13 +198,7 @@ int main(int argc, char **argv)
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
     //                                       FILL IN: kernels invocation (step 0)                                     //
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-    cudaMemset(tmp_velocities_gpu.vel_x, 0, size * sizeof(float));
-    cudaMemset(tmp_velocities_gpu.vel_y, 0, size * sizeof(float));
-    cudaMemset(tmp_velocities_gpu.vel_z, 0, size * sizeof(float));
-    
-    calculate_gravitation_velocity<<<simulationGrid, thr_blc>>>(particles_gpu, tmp_velocities_gpu, N, dt);
-    calculate_collision_velocity<<<simulationGrid, thr_blc>>>(particles_gpu, tmp_velocities_gpu, N, dt);
-    update_particle<<<simulationGrid, thr_blc>>>(particles_gpu, tmp_velocities_gpu, N, dt);
+    calculate_velocity<<<simulationGrid, thr_blc>>>(particles_one_gpu, particles_two_gpu, N, dt);
 
 
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

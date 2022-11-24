@@ -87,8 +87,20 @@ __global__ void calculate_collision_velocity(t_particles  p,
  */
 __global__ void update_particle(t_particles  p,
                                 t_velocities tmp_vel,
-                                int           N,
-                                float         dt);
+                                int          N,
+                                float        dt);
+
+/**
+ * CUDA kernel to update particles
+ * @param p_in    - particles input
+ * @param p_out   - particles output
+ * @param N       - Number of particles
+ * @param dt      - Size of the time step
+ */
+__global__ void calculate_velocity(t_particles   p_in,
+                                   t_particles   p_out,
+                                   int           N,
+                                   float         dt);
 
 /**
  * CUDA kernel to update particles
