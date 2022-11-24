@@ -162,7 +162,7 @@ __global__ void calculate_velocity(t_particles p_in, t_particles p_out, int N, f
     dz = p_in.pos_z[index] - p_in.pos_z[i];
 
     r = sqrt(dx*dx + dy*dy + dz*dz);
-    
+
     // (index != i) <- make sure, you are not computing effects of particle on itself
     // (r > COLLISION_DISTANCE) <- because it was in the cpu implementation
     isComputable = (index != i) && (r > COLLISION_DISTANCE);
@@ -183,9 +183,9 @@ __global__ void calculate_velocity(t_particles p_in, t_particles p_out, int N, f
 
     isComputable = (index != i) && (r < COLLISION_DISTANCE) && (r > 0.0f);
 
-    vx = ((p.weight[index] * p.vel_x[index] - p.weight[i] * p.vel_x[index] + 2 * p.weight[i] * p.vel_x[i]) / (p.weight[index] + p.weight[i])) - p.vel_x[index];
-    vy = ((p.weight[index] * p.vel_y[index] - p.weight[i] * p.vel_y[index] + 2 * p.weight[i] * p.vel_y[i]) / (p.weight[index] + p.weight[i])) - p.vel_y[index];
-    vz = ((p.weight[index] * p.vel_z[index] - p.weight[i] * p.vel_z[index] + 2 * p.weight[i] * p.vel_z[i]) / (p.weight[index] + p.weight[i])) - p.vel_z[index];
+    vx = ((p_in.weight[index] * p_in.vel_x[index] - p_in.weight[i] * p_in.vel_x[index] + 2 * p_in.weight[i] * p_in.vel_x[i]) / (p_in.weight[index] + p_in.weight[i])) - p_in.vel_x[index];
+    vy = ((p_in.weight[index] * p_in.vel_y[index] - p_in.weight[i] * p_in.vel_y[index] + 2 * p_in.weight[i] * p_in.vel_y[i]) / (p_in.weight[index] + p_in.weight[i])) - p_in.vel_y[index];
+    vz = ((p_in.weight[index] * p_in.vel_z[index] - p_in.weight[i] * p_in.vel_z[index] + 2 * p_in.weight[i] * p_in.vel_z[i]) / (p_in.weight[index] + p_in.weight[i])) - p_in.vel_z[index];
 
     tmp_x += vx * isComputable;
     tmp_y += vy * isComputable;
